@@ -1,0 +1,402 @@
+---
+# Source: games-on-whales/templates/pulse-audio-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gow-games-on-whales-pulse
+  labels:
+    helm.sh/chart: games-on-whales-2.0.0
+    app.kubernetes.io/name: games-on-whales
+    app.kubernetes.io/instance: gow
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  client.conf: |-
+    default-sink = sink-sunshine-stereo
+    autospawn = no
+    daemon-binary = /bin/true
+  daemon.conf: |-
+    exit-idle-time = -1
+    flat-volumes = yes
+  default.pa: |-
+    .fail
+        load-module module-null-sink sink_name=sunshine
+        set-default-sink sunshine
+        load-module module-native-protocol-unix auth-anonymous=1 socket=/tmp/pulse/pulse-socket
+  edid.txt: |-
+    00 ff ff ff ff ff ff 00 1e 6d f5 56 71 ca 04 00 05 14 01 03 80 35 1e 78 0a ae c5 a2 57 4a 9c 25 12 50 54 21 08 00 b3 00 81 80 81 40 01 01 01 01 01 01 01 01 01 01 1a 36 80 a0 70 38 1f 40 30 20 35 00 13 2b 21 00 00 1a 02 3a 80 18 71 38 2d 40 58 2c 45 00 13 2b 21 00 00 1e 00 00 00 fd 00 38 3d 1e 53 0f 00 0a 20 20 20 20 20 20 00 00 00 fc 00 57 32 34 35 33 0a 20 20 20 20 20 20 20 01 3d 02 03 21 f1 4e 90 04 03 01 14 12 05 1f 10 13 00 00 00 00 23 09 07 07 83 01 00 00 65 03 0c 00 10 00 02 3a 80 18 71 38 2d 40 58 2c 45 00 13 2b 21 00 00 1e 01 1d 80 18 71 1c 16 20 58 2c 25 00 13 2b 21 00 00 9e 01 1d 00 72 51 d0 1e 20 6e 28 55 00 13 2b 21 00 00 1e 8c 0a d0 8a 20 e0 2d 10 10 3e 96 00 13 2b 21 00 00 18 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 26
+  xorg-screen.conf: |-
+    Section "Screen"
+      Identifier     "Screen0"
+      Device         "Device0"
+      Monitor        "Monitor0"
+      DefaultDepth    24
+      Option         "AllowEmptyInitialConfiguration" "True"
+      Option         "UseDisplayDevice" "DP-0"
+      Option         "CustomEDID" "DP-0:/opt/config/edid.txt"
+      Option         "ConnectedMonitor" "DP-0"
+      SubSection     "Display"
+          Depth       24
+      EndSubSection
+    EndSection
+---
+# Source: games-on-whales/templates/common.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gow
+  labels:
+    app.kubernetes.io/service: gow-games-on-whales
+    app.kubernetes.io/instance: gow
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: games-on-whales
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: games-on-whales-2.0.0
+  annotations:
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+spec:
+  type: ClusterIP
+  ports:
+    - port: 48010
+      targetPort: sunshine
+      protocol: TCP
+      name: sunshine
+    - port: 47984
+      targetPort: sunshine-tcp1
+      protocol: TCP
+      name: sunshine-tcp1
+    - port: 47985
+      targetPort: sunshine-tcp2
+      protocol: TCP
+      name: sunshine-tcp2
+    - port: 47986
+      targetPort: sunshine-tcp3
+      protocol: TCP
+      name: sunshine-tcp3
+    - port: 47987
+      targetPort: sunshine-tcp4
+      protocol: TCP
+      name: sunshine-tcp4
+    - port: 47988
+      targetPort: sunshine-tcp5
+      protocol: TCP
+      name: sunshine-tcp5
+    - port: 47989
+      targetPort: sunshine-tcp6
+      protocol: TCP
+      name: sunshine-tcp6
+    - port: 47990
+      targetPort: sunshine-tcp7
+      protocol: TCP
+      name: sunshine-tcp7
+  selector:
+    app.kubernetes.io/instance: gow
+    app.kubernetes.io/name: games-on-whales
+---
+# Source: games-on-whales/templates/common.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gow-games-on-whales-udp
+  labels:
+    app.kubernetes.io/service: gow-games-on-whales-udp
+    app.kubernetes.io/instance: gow
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: games-on-whales
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: games-on-whales-2.0.0
+  annotations:
+spec:
+  type: ClusterIP
+  ports:
+    - port: 47998
+      targetPort: sunshine-udp1
+      protocol: UDP
+      name: sunshine-udp1
+    - port: 47999
+      targetPort: sunshine-udp2
+      protocol: UDP
+      name: sunshine-udp2
+    - port: 48000
+      targetPort: sunshine-udp3
+      protocol: UDP
+      name: sunshine-udp3
+  selector:
+    app.kubernetes.io/instance: gow
+    app.kubernetes.io/name: games-on-whales
+---
+# Source: games-on-whales/templates/common.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gow
+  labels:
+    app.kubernetes.io/instance: gow
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: games-on-whales
+    app.kubernetes.io/version: 1.0.0
+    helm.sh/chart: games-on-whales-2.0.0
+spec:
+  revisionHistoryLimit: 3
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: games-on-whales
+      app.kubernetes.io/instance: gow
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: games-on-whales
+        app.kubernetes.io/instance: gow
+    spec:
+      serviceAccountName: default
+      automountServiceAccountToken: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      enableServiceLinks: true
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - chown -R 1000:1000 /home/retro
+          image: busybox:1.34.0
+          imagePullPolicy: IfNotPresent
+          name: mkhomeretrodirs
+          volumeMounts:
+            - mountPath: /home/retro
+              name: home
+      containers:
+        - name: sunshine
+          image: "ghcr.io/games-on-whales/sunshine:edge"
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-c", "--"]
+          # args: ["sleep 30d"]
+          args:
+            [
+              "sleep 30s && apt update && wget -c https://github.com/LizardByte/Sunshine/releases/download/nightly-dev/sunshine-ubuntu-22.04-amd64.deb && apt install -y ./sunshine-ubuntu-22.04-amd64.deb libboost-chrono-dev && rm ./sunshine-ubuntu-22.04-amd64.deb && /entrypoint.sh",
+            ]
+          securityContext:
+            privileged: true
+          env:
+            - name: DISPLAY
+              value: :99
+            - name: GOW_REQUIRED_DEVICES
+              value: /dev/uinput /dev/input/event* /dev/dri/*
+            - name: LOG_LEVEL
+              value: info
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: utility,video,graphics,display
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: PULSE_SERVER
+              value: /tmp/pulse/pulse-socket
+            - name: SUNSHINE_PASS
+              value: admin
+            - name: SUNSHINE_USER
+              value: admin
+            - name: XDG_RUNTIME_DIR
+              value: /tmp/.X11-unix
+          ports:
+            - name: sunshine
+              containerPort: 48010
+              protocol: TCP
+            - name: sunshine-tcp1
+              containerPort: 47984
+              protocol: TCP
+            - name: sunshine-tcp2
+              containerPort: 47985
+              protocol: TCP
+            - name: sunshine-tcp3
+              containerPort: 47986
+              protocol: TCP
+            - name: sunshine-tcp4
+              containerPort: 47987
+              protocol: TCP
+            - name: sunshine-tcp5
+              containerPort: 47988
+              protocol: TCP
+            - name: sunshine-tcp6
+              containerPort: 47989
+              protocol: TCP
+            - name: sunshine-tcp7
+              containerPort: 47990
+              protocol: TCP
+            - name: sunshine-udp1
+              containerPort: 47998
+              protocol: UDP
+            - name: sunshine-udp2
+              containerPort: 47999
+              protocol: UDP
+            - name: sunshine-udp3
+              containerPort: 48000
+              protocol: UDP
+          volumeMounts:
+            - name: audio-socket
+              mountPath: /tmp/pulse
+            - name: dev-input
+              mountPath: /dev/input
+            - name: dshm
+              mountPath: /dshm
+            - name: home
+              mountPath: /home/retro
+            - name: pulse-conf
+              mountPath: /pulse-conf
+            - name: udev
+              mountPath: /run/udev
+            - name: var-log
+              mountPath: /var/log
+            - name: xorg
+              mountPath: /tmp/.X11-unix
+          # livenessProbe:
+          #   failureThreshold: 3
+          #   initialDelaySeconds: 0
+          #   periodSeconds: 10
+          #   tcpSocket:
+          #     port: 47990
+          #   timeoutSeconds: 1
+          # readinessProbe:
+          #   failureThreshold: 3
+          #   initialDelaySeconds: 0
+          #   periodSeconds: 10
+          #   tcpSocket:
+          #     port: 47990
+          #   timeoutSeconds: 1
+          # startupProbe:
+          #   failureThreshold: 30
+          #   initialDelaySeconds: 0
+          #   periodSeconds: 5
+          #   tcpSocket:
+          #     port: 47990
+          #   timeoutSeconds: 1
+        - image: ghcr.io/games-on-whales/pulseaudio:edge
+          imagePullPolicy: IfNotPresent
+          name: pulseaudio
+          volumeMounts:
+            - mountPath: /tmp/pulse
+              name: audio-socket
+            - mountPath: /etc/pulse
+              name: pulse-conf
+        - name: steam
+          image: ghcr.io/games-on-whales/steam:edge
+          imagePullPolicy: IfNotPresent
+          # command: ["/bin/bash", "-c", "--"]
+          # args: ["sleep 30d"]
+          env:
+            - name: DISPLAY
+              value: :99
+            - name: LOG_LEVEL
+              value: info
+            - name: PULSE_SERVER
+              value: /tmp/pulse/pulse-socket
+            - name: GOW_REQUIRED_DEVICES
+              value: /dev/uinput /dev/input/event* /dev/dri/* /dev/snd/*
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: all
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /tmp/pulse
+              name: audio-socket
+            - mountPath: /dev/input
+              name: dev-input
+              readOnly: true
+            - mountPath: /run/udev
+              name: udev
+              readOnly: true
+            - mountPath: /tmp/.X11-unix
+              name: xorg
+            - mountPath: /home/retro
+              name: home
+            - mountPath: /dev/shm
+              name: dshm
+        - name: xorg
+          env:
+            - name: XORG_VERBOSE
+              value: "6"
+            - name: DISPLAY
+              value: :99
+            - name: REFRESH_RATE
+              value: "60"
+            - name: RESOLUTION
+              value: 1280x720
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: all
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+          image: ghcr.io/games-on-whales/xorg:edge
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-c", "--"]
+          args:
+            [
+              "/entrypont.sh || Xorg -logverbose 6 -ac -noreset +extension GLX +extension RANDR +extension RENDER vt1 :99",
+            ]
+          resources:
+            limits:
+              nvidia.com/gpu: "1"
+            requests:
+              memory: 8G
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /dev/input
+              name: dev-input
+              readOnly: true
+            - mountPath: /run/udev
+              name: udev
+              readOnly: true
+            - mountPath: /tmp/.X11-unix
+              name: xorg
+            - mountPath: /var/log
+              name: var-log
+            - mountPath: /opt/config/
+              name: edid
+            - mountPath: /etc/X11/xorg.conf.d/
+              name: xorg-screen-conf
+      volumes:
+        - name: audio-socket
+          hostPath:
+            path: /tmp/pulse
+        - name: dev-input
+          hostPath:
+            path: /dev/input
+        - name: dshm
+          emptyDir:
+            medium: Memory
+        - name: home
+          persistentVolumeClaim:
+            claimName: home-retro
+        - name: edid
+          configMap:
+            name: gow-games-on-whales-pulse
+            items:
+              - key: edid.txt
+                path: edid.txt
+        - name: xorg-screen-conf
+          configMap:
+            name: gow-games-on-whales-pulse
+            items:
+              - key: xorg-screen.conf
+                path: xorg-screen.conf
+        - name: pulse-conf
+          configMap:
+            items:
+              - key: default.pa
+                path: default.pa
+              - key: client.conf
+                path: client.conf
+              - key: daemon.conf
+                path: daemon.conf
+            name: gow-games-on-whales-pulse
+        - name: udev
+          hostPath:
+            path: /run/udev
+        - name: var-log
+          hostPath:
+            path: /var/log
+        - name: xorg
+          hostPath:
+            path: /tmp/.X11-unix

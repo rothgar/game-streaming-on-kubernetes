@@ -1,0 +1,105 @@
+apiVersion: karpenter.sh/v1alpha5
+kind: Provisioner
+metadata:
+  name: default
+spec:
+  requirements:
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values:
+        - on-demand
+    - key: kubernetes.io/arch
+      operator: In
+      values:
+        - amd64
+    - key: kubernetes.io/os
+      operator: In
+      values:
+        - linux
+    - key: karpenter.k8s.aws/instance-gpu-manufacturer
+      operator: In
+      values:
+        - nvidia
+    - key: karpenter.k8s.aws/instance-category
+      operator: In
+      values:
+        - g
+        - c
+        - m
+        - p
+        - r
+  providerRef:
+    name: default
+  ttlSecondsAfterEmpty: 30
+  ttlSecondsUntilExpired: 1209600
+---
+apiVersion: karpenter.k8s.aws/v1alpha1
+kind: AWSNodeTemplate
+metadata:
+  name: default
+spec:
+  subnetSelector:
+    alpha.eksctl.io/cluster-name: game-streaming
+  securityGroupSelector:
+    alpha.eksctl.io/cluster-name: game-streaming
+  amiFamily: Ubuntu
+  userData: |-
+    #!/bin/bash -x
+
+    # Install tailscale for private connectivity
+    curl -fsSL https://tailscale.com/install.sh | sh
+    # Generate a reusable auth key from https://login.tailscale.com/admin/settings/keys
+    # Start tailscale with your auth key
+    tailscale up --ssh --auth-key "YOUR_AUTH_KEY"
+
+    # From https://github.com/NVIDIA/k8s-device-plugin#prerequisites
+    distribution=$(. /etc/os-release;echo $ID$VERSION_ID)
+    curl -s -L https://nvidia.github.io/libnvidia-container/gpgkey | sudo apt-key add -
+    curl -s -L https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list | sudo tee /etc/apt/sources.list.d/libnvidia-container.list
+    apt update && apt install -y nvidia-headless-530 nvidia-utils-530 nvidia-container-toolkit libnvidia-fbc1-530 nvidia-modprobe libnvidia-encode-530
+
+    nvidia-modprobe
+
+    # Ubuntu reads from a template config in /usr/lib but when I 
+    # overwrite that file the bootstrap script fails
+    #
+    # Create a new config that doesn't conflict with the default
+    cat << 'EOF' > /etc/containerd/config-nvidia.toml
+    version = 2
+    root = "/var/lib/containerd"
+    state = "/run/containerd"
+
+    [plugins."io.containerd.grpc.v1.cri".containerd]
+      default_runtime_name = "nvidia"
+
+    [grpc]
+    address = "/run/containerd/containerd.sock"
+
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    runtime_type = "io.containerd.runc.v2"
+
+    [plugins."io.containerd.grpc.v1.cri".cni]
+    bin_dir = "/opt/cni/bin"
+    conf_dir = "/etc/cni/net.d"
+
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes]
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+        privileged_without_host_devices = false
+        runtime_engine = ""
+        runtime_root = ""
+        runtime_type = "io.containerd.runc.v2"
+      [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+        BinaryName = "/usr/bin/nvidia-container-runtime"
+    EOF
+
+    # Start the containerd service with our nvidia config instead of the default 
+    mkdir -p /etc/systemd/system/containerd.service.d
+
+    cat << 'EOF' > /etc/systemd/system/containerd.service.d/override.conf
+    [Service]
+    ExecStart=
+    ExecStart=/usr/bin/containerd --config /etc/containerd/config-nvidia.toml
+    EOF
+
+    systemctl daemon-reload
+    systemctl restart containerd

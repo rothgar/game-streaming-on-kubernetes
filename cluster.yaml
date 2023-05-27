@@ -1,0 +1,50 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: game-streaming
+  region: us-west-1
+  version: '1.27'
+  tags:
+    karpenter.sh/discovery: game-streaming
+
+iam:
+  withOIDC: true
+  serviceAccounts:
+  - metadata:
+      name: karpenter
+      namespace: karpenter
+    roleName: karpenter
+    attachPolicyARNs:
+    - arn:aws:iam::323238900174:policy/KarpenterControllerPolicy-game-streaming
+    roleOnly: true
+
+iamIdentityMappings:
+- arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/KarpenterNodeRole-game-streaming"
+  username: system:node:{{EC2PrivateDNSName}}
+  groups:
+  - system:bootstrappers
+  - system:nodes
+
+karpenter:
+  version: 'v0.27.5'
+  createServiceAccount: true
+
+managedNodeGroups:
+  - name: addons-ng-1
+    minSize: 2
+    maxSize: 5
+    desiredCapacity: 2
+    taints:
+      - key: CriticalAddonsOnly
+        value: "true"
+        effect: NoSchedule
+
+addons:
+  - name: coredns
+  - name: aws-ebs-csi-driver
+    wellKnownPolicies:
+      ebsCSIController: true
+  - name: vpc-cni
+  - name: kube-proxy
+    version: latest
