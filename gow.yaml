@@ -332,7 +332,7 @@ spec:
           command: ["/bin/bash", "-c", "--"]
           args:
             [
-              "/entrypont.sh || Xorg -logverbose 6 -ac -noreset +extension GLX +extension RANDR +extension RENDER vt1 :99",
+              "/entrypoint.sh || Xorg -logverbose 6 -ac -noreset +extension GLX +extension RANDR +extension RENDER vt1 :99",
             ]
           resources:
             limits:
