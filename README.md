@@ -1,3 +1,7 @@
+# Not maintained
+
+I created this repo as a proof of concept. It isn't actively maintained and if you're looking for up-to-date instructions please refer to the upstream projects.
+
 # Game streaming on Kubernetes
 
 This repo is an example of how to set up a Kubernetes cluster and an example workload to stream a game from Kubernetes using [Sunshine](https://github.com/LizardByte/Sunshine).
